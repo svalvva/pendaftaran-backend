@@ -8,6 +8,6 @@ type User struct {
     Name     string             `json:"name" bson:"name"`
     NIM      string             `json:"nim" bson:"nim"`
     Email    string             `json:"email" bson:"email"`
-    Password string             `json:"-" bson:"password"` // Tanda - agar password tidak dikirim dalam JSON
+    Password string 			`json:"password" bson:"password"` // Tanda - agar password tidak dikirim dalam JSON
     Role     string             `json:"role" bson:"role"`
 }
