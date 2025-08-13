@@ -5,7 +5,7 @@ import (
 	"log"
 	"time"
 
-	"backend-himatif/internal/config"
+	"github.com/ulbithebest/BE-pendaftaran/internal/config"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
