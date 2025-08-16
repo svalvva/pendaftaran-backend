@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"net/http"
+	// "strings"
 
 	// Pastikan path import ini sesuai dengan nama modul di go.mod Anda
 	"github.com/ulbithebest/BE-pendaftaran/internal/config"
@@ -30,14 +31,13 @@ func main() {
 	r.Use(chiMiddleware.Recoverer) // Middleware untuk menangani panic dan menjaga server tetap hidup
 
 	// Setup CORS (Cross-Origin Resource Sharing)
-	// Ini WAJIB agar frontend bisa berkomunikasi dengan backend
 	r.Use(cors.Handler(cors.Options{
 		AllowedOrigins:   []string{"http://localhost:5500", "http://127.0.0.1:5500"}, // Sesuaikan dengan alamat frontend Anda
-		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedMethods:   []string{"GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"}, // TAMBAHKAN PATCH
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
 		ExposedHeaders:   []string{"Link"},
 		AllowCredentials: true,
-		MaxAge:           300, // Durasi (detik) browser bisa menyimpan cache preflight request
+		MaxAge:           300,
 	}))
 
 	// 5. Definisikan Routes (Endpoint API)
@@ -53,11 +53,21 @@ func main() {
 		// --- Routes untuk user biasa ---
 		r.Get("/user/profile", handler.GetUserProfileHandler)
 		r.Post("/user/registration", handler.SubmitRegistrationHandler)
+		r.Get("/user/my-registration", handler.GetUserRegistrationHandler)
+
+		// --- TAMBAHAN: File Server untuk CV (dilindungi otentikasi) ---
+		// Ini akan membuat file di folder /uploads bisa diakses via URL
+		fileServer := http.FileServer(http.Dir("./uploads"))
+		r.Handle("/uploads/*", http.StripPrefix("/api/uploads/", fileServer))
 
 		// --- Routes khusus admin ---
 		r.Route("/admin", func(r chi.Router) {
 			r.Use(middleware.AdminOnlyMiddleware) // Perlindungan tambahan, hanya untuk admin
-			r.Get("/registrations", handler.GetAllRegistrationsHandler)
+			
+			// --- PERUBAHAN ENDPOINT ADMIN ---
+			r.Get("/registrations-with-details", handler.GetAllRegistrationsDetailHandler)
+			// r.Patch("/registrations/{id}/status", handler.UpdateRegistrationStatusHandler)
+			r.Patch("/registrations/{id}", handler.UpdateRegistrationDetailsHandler)
 		})
 	})
 

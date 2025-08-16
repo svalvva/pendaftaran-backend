@@ -8,12 +8,9 @@ import (
 	"github.com/ulbithebest/BE-pendaftaran/internal/auth"
 )
 
-// PasetoPayloadKey adalah tipe custom untuk context key
 type PasetoPayloadKey string
-
 const payloadKey PasetoPayloadKey = "pasetoPayload"
 
-// AuthMiddleware melindungi endpoint
 func AuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		authHeader := r.Header.Get("Authorization")
@@ -29,20 +26,17 @@ func AuthMiddleware(next http.Handler) http.Handler {
 		}
 
 		tokenString := parts[1]
-
 		payload, err := auth.VerifyToken(tokenString)
 		if err != nil {
 			http.Error(w, `{"error": "Invalid token"}`, http.StatusUnauthorized)
 			return
 		}
 
-		// Simpan payload di context untuk digunakan di handler selanjutnya
 		ctx := context.WithValue(r.Context(), payloadKey, payload)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
 
-// AdminOnlyMiddleware memastikan hanya admin yang bisa akses
 func AdminOnlyMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		payload, ok := r.Context().Value(payloadKey).(*auth.PasetoPayload)
@@ -54,7 +48,6 @@ func AdminOnlyMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-// GetPayloadFromContext mengambil payload dari request context
 func GetPayloadFromContext(ctx context.Context) (*auth.PasetoPayload, bool) {
 	payload, ok := ctx.Value(payloadKey).(*auth.PasetoPayload)
 	return payload, ok
