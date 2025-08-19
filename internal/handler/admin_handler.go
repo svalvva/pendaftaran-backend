@@ -63,7 +63,7 @@ func UpdateRegistrationDetailsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var payload model.Registration
+	var payload model.Registration 
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
 		http.Error(w, `{"error": "Invalid request body"}`, http.StatusBadRequest)
 		return
@@ -72,12 +72,19 @@ func UpdateRegistrationDetailsHandler(w http.ResponseWriter, r *http.Request) {
 	collection := repository.MongoClient.Database(config.GetConfig().DatabaseName).Collection("registrations")
 	updateFields := bson.M{}
 
+	// Hanya update field yang dikirim oleh admin
 	if payload.Status != "" {
 		updateFields["status"] = payload.Status
 	}
 	if payload.InterviewSchedule != "" {
 		updateFields["interview_schedule"] = payload.InterviewSchedule
 	}
+    
+    // --- PERBAIKAN DI SINI: Tambahkan logika untuk lokasi wawancara ---
+	if payload.InterviewLocation != "" {
+		updateFields["interview_location"] = payload.InterviewLocation
+	}
+    
 	if payload.Division != "" {
 		updateFields["division"] = payload.Division
 	}

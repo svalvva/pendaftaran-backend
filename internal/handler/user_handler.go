@@ -2,14 +2,11 @@
 package handler
 
 import (
+
 	"context"
 	"encoding/json"
-	"fmt"
-	"io"
-	// "log"
+	"log" // Dibutuhkan untuk log.Println di SubmitRegistrationHandler
 	"net/http"
-	"os"
-	"path/filepath"
 	"time"
 
 	"github.com/ulbithebest/BE-pendaftaran/internal/auth"
@@ -21,6 +18,8 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"golang.org/x/crypto/bcrypt"
+	"github.com/cloudinary/cloudinary-go/v2"
+    "github.com/cloudinary/cloudinary-go/v2/api/uploader"
 )
 
 func RegisterHandler(w http.ResponseWriter, r *http.Request) {
@@ -96,57 +95,71 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func SubmitRegistrationHandler(w http.ResponseWriter, r *http.Request) {
+	// 1. Dapatkan data user dari token
 	payload, ok := middleware.GetPayloadFromContext(r.Context())
 	if !ok {
-		http.Error(w, `{"error": "Failed to get user data from token"}`, http.StatusInternalServerError)
+		http.Error(w, `{"error": "User data not found"}`, http.StatusInternalServerError)
 		return
 	}
 
+	// 2. Parse form (maks 10MB)
 	if err := r.ParseMultipartForm(10 << 20); err != nil {
 		http.Error(w, `{"error": "File size exceeds limit"}`, http.StatusBadRequest)
 		return
 	}
 
-	file, handler, err := r.FormFile("cv")
+	// 3. Setup koneksi ke Cloudinary
+	cfg := config.GetConfig()
+	cld, err := cloudinary.NewFromParams(cfg.CloudinaryCloudName, cfg.CloudinaryApiKey, cfg.CloudinaryApiSecret)
+	if err != nil {
+		http.Error(w, `{"error": "Failed to connect to Cloudinary"}`, http.StatusInternalServerError)
+		return
+	}
+	ctx := context.Background()
+
+	// 4. Proses Upload CV (Wajib)
+	file, _, err := r.FormFile("cv")
 	if err != nil {
 		http.Error(w, `{"error": "CV file is required"}`, http.StatusBadRequest)
 		return
 	}
 	defer file.Close()
 
-	ext := filepath.Ext(handler.Filename)
-	if ext != ".pdf" {
-		http.Error(w, `{"error": "CV must be a PDF file"}`, http.StatusBadRequest)
-		return
-	}
-	fileName := fmt.Sprintf("%s_%s", payload.UserID.Hex(), handler.Filename)
-	filePath := filepath.Join("uploads", fileName)
-
-	dst, err := os.Create(filePath)
+	uploadResult, err := cld.Upload.Upload(ctx, file, uploader.UploadParams{Folder: "himatif-registrations"})
 	if err != nil {
-		http.Error(w, `{"error": "Failed to save file"}`, http.StatusInternalServerError)
+		http.Error(w, `{"error": "Failed to upload CV"}`, http.StatusInternalServerError)
 		return
 	}
-	defer dst.Close()
+	cvUrl := uploadResult.SecureURL
 
-	if _, err := io.Copy(dst, file); err != nil {
-		http.Error(w, `{"error": "Failed to copy file content"}`, http.StatusInternalServerError)
-		return
+	// 5. Proses Upload Sertifikat (Opsional)
+	certificateUrl := ""
+	certFile, _, err := r.FormFile("certificate")
+	if err == nil { // Jika file sertifikat ada (bukan error)
+		defer certFile.Close()
+		certUploadResult, err := cld.Upload.Upload(ctx, certFile, uploader.UploadParams{Folder: "himatif-registrations"})
+		if err != nil {
+			// Jika upload sertifikat gagal, kita bisa memilih untuk mengabaikannya atau mengembalikan error
+			log.Println("Warning: failed to upload certificate, but proceeding without it.", err)
+		} else {
+			certificateUrl = certUploadResult.SecureURL
+		}
 	}
 
+	// 6. Simpan URL ke database
 	registration := model.Registration{
-		UserID:        payload.UserID,
-		Division:      r.FormValue("division"),
-		Motivation:    r.FormValue("motivation"),
-		VisionMission: r.FormValue("vision_mission"),
-		CVPath:        filePath,
-		Status:        "pending",
-		Note:          "",
-		UpdatedAt:     primitive.NewDateTimeFromTime(time.Now()),
+		UserID:         payload.UserID,
+		Division:       r.FormValue("division"),
+		Motivation:     r.FormValue("motivation"),
+		VisionMission:  r.FormValue("vision_mission"),
+		CvUrl:          cvUrl,
+		CertificateUrl: certificateUrl,
+		Status:         "pending",
+		Note:           "",
+		UpdatedAt:      primitive.NewDateTimeFromTime(time.Now()),
 	}
 
-	// PERBAIKAN: Gunakan nama database dari config, bukan hardcode
-	collection := repository.MongoClient.Database(config.GetConfig().DatabaseName).Collection("registrations")
+	collection := repository.MongoClient.Database(cfg.DatabaseName).Collection("registrations")
 	_, err = collection.InsertOne(context.TODO(), registration)
 	if err != nil {
 		http.Error(w, `{"error": "Failed to submit registration"}`, http.StatusInternalServerError)
@@ -157,6 +170,7 @@ func SubmitRegistrationHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(map[string]string{"message": "Registration submitted successfully"})
 }
+
 
 func GetUserProfileHandler(w http.ResponseWriter, r *http.Request) {
 	payload, ok := middleware.GetPayloadFromContext(r.Context())

@@ -13,6 +13,10 @@ type Config struct {
 	DatabaseName  string
 	PasetoSecretKey string
 	ServerPort    string
+	CloudinaryCloudName string
+    CloudinaryApiKey    string
+    CloudinaryApiSecret string
+
 }
 
 var appConfig *Config
@@ -28,6 +32,9 @@ func LoadConfig() {
 		DatabaseName:  os.Getenv("MONGO_DATABASE"),
 		PasetoSecretKey: os.Getenv("PASETO_SECRET_KEY"),
 		ServerPort:    os.Getenv("SERVER_PORT"),
+		CloudinaryCloudName: os.Getenv("CLOUDINARY_CLOUD_NAME"),
+    	CloudinaryApiKey:    os.Getenv("CLOUDINARY_API_KEY"),
+    	CloudinaryApiSecret: os.Getenv("CLOUDINARY_API_SECRET"),
 	}
     log.Println("Configuration loaded successfully")
 }

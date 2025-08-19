@@ -21,8 +21,10 @@ type Registration struct {
 	Division      string             `bson:"division" json:"division"`
 	Motivation    string             `bson:"motivation" json:"motivation"`
 	VisionMission string             `bson:"vision_mission" json:"vision_mission"`
-	InterviewSchedule string            `bson:"interview_schedule,omitempty" json:"interview_schedule,omitempty"`
-	CVPath        string             `bson:"cv_path" json:"cv_path"`
+	InterviewSchedule string         `bson:"interview_schedule,omitempty" json:"interview_schedule,omitempty"`
+	InterviewLocation string         `bson:"interview_location,omitempty" json:"interview_location,omitempty"`
+	CvUrl            string          `bson:"cv_url" json:"cv_url"`                                       // <-- UBAH INI
+	CertificateUrl   string          `bson:"certificate_url,omitempty" json:"certificate_url,omitempty"`
 	Status        string             `bson:"status" json:"status"`
 	Note          string             `bson:"note" json:"note"`
 	UpdatedAt     primitive.DateTime `bson:"updated_at" json:"updated_at"`
@@ -32,12 +34,13 @@ type Registration struct {
 type RegistrationDetail struct {
 	ID            primitive.ObjectID `bson:"_id" json:"id"`
 	UserID        primitive.ObjectID `bson:"user_id" json:"user_id"`
-	Name          string             `bson:"name" json:"name"`
+	Name          string             `bson:"name" json:"name"` 
 	NIM           string             `bson:"nim" json:"nim"`
 	Division      string             `bson:"division" json:"division"`
 	Motivation    string             `bson:"motivation" json:"motivation"`
 	VisionMission string             `bson:"vision_mission" json:"vision_mission"`
-	CVPath        string             `bson:"cv_path" json:"cv_path"`
+	CvUrl            string          `bson:"cv_url" json:"cv_url"`                                       // <-- UBAH INI
+	CertificateUrl   string          `bson:"certificate_url,omitempty" json:"certificate_url,omitempty"`
 	Status        string             `bson:"status" json:"status"`
 	Note          string             `bson:"note,omitempty" json:"note,omitempty"`
 	UpdatedAt     primitive.DateTime `bson:"updated_at" json:"updated_at"`
