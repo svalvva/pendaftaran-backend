@@ -4,14 +4,15 @@ import "go.mongodb.org/mongo-driver/bson/primitive"
 
 // User sesuai dengan koleksi 'users'
 type User struct {
-	ID         primitive.ObjectID `bson:"_id,omitempty" json:"id,omitempty"`
-	Name       string             `bson:"name" json:"name"`
-	NIM        string             `bson:"nim" json:"nim"`
-	BirthPlace string             `bson:"birth_place" json:"birth_place"`
-	BirthDate  string             `bson:"birth_date" json:"birth_date"`
-	Email      string             `bson:"email" json:"email"`
-	Password   string             `bson:"password" json:"password"`
-	Role       string             `bson:"role" json:"role"`
+    ID         primitive.ObjectID `bson:"_id,omitempty" json:"id,omitempty"`
+    Name       string             `bson:"name" json:"name"`
+    NIM        string             `bson:"nim" json:"nim"`
+    BirthPlace string             `bson:"birth_place" json:"birth_place"`
+    BirthDate  string             `bson:"birth_date" json:"birth_date"`
+    Email      string             `bson:"email" json:"email"`
+    PhoneNumber string            `bson:"phone_number" json:"phone_number"`
+    Password   string             `bson:"password" json:"password"`
+    Role       string             `bson:"role" json:"role"`
 }
 
 // Registration sesuai dengan koleksi 'registrations'

@@ -68,6 +68,7 @@ func main() {
 			r.Get("/registrations-with-details", handler.GetAllRegistrationsDetailHandler)
 			// r.Patch("/registrations/{id}/status", handler.UpdateRegistrationStatusHandler)
 			r.Patch("/registrations/{id}", handler.UpdateRegistrationDetailsHandler)
+			r.Get("/users", handler.GetAllUsersHandler)
 		})
 	})
 

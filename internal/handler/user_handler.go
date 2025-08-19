@@ -29,6 +29,11 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if len(user.PhoneNumber) < 10 || len(user.PhoneNumber) > 13 {
+        http.Error(w, `{"error": "Nomor telepon harus antara 10 hingga 13 digit."}`, http.StatusBadRequest)
+        return
+    }
+	
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
 	if err != nil {
 		http.Error(w, `{"error": "Failed to hash password"}`, http.StatusInternalServerError)

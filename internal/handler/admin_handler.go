@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"time"
-
+	
 	"github.com/go-chi/chi/v5"
 	"github.com/ulbithebest/BE-pendaftaran/internal/config"
 	"github.com/ulbithebest/BE-pendaftaran/internal/model" // <-- PERBAIKAN 1: Tambahkan import model
@@ -14,6 +14,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 func GetAllRegistrationsDetailHandler(w http.ResponseWriter, r *http.Request) {
@@ -100,4 +101,30 @@ func UpdateRegistrationDetailsHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{"message": "Registration updated successfully"})
+}
+func GetAllUsersHandler(w http.ResponseWriter, r *http.Request) {
+	collection := repository.MongoClient.Database(config.GetConfig().DatabaseName).Collection("users")
+
+	// Opsi untuk tidak menyertakan field password demi keamanan
+	opts := options.Find().SetProjection(bson.M{"password": 0})
+
+	cursor, err := collection.Find(context.TODO(), bson.D{}, opts)
+	if err != nil {
+		http.Error(w, `{"error": "Failed to fetch users"}`, http.StatusInternalServerError)
+		return
+	}
+	defer cursor.Close(context.TODO())
+
+	var users []model.User
+	if err = cursor.All(context.TODO(), &users); err != nil {
+		http.Error(w, `{"error": "Failed to decode users"}`, http.StatusInternalServerError)
+		return
+	}
+
+	if users == nil {
+		users = []model.User{}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(users)
 }
