@@ -23,43 +23,46 @@ import (
 )
 
 func RegisterHandler(w http.ResponseWriter, r *http.Request) {
-	var user model.User
-	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
-		http.Error(w, `{"error": "Invalid request body"}`, http.StatusBadRequest)
-		return
-	}
+    var user model.User
+    if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
+        http.Error(w, `{"error": "Invalid request body"}`, http.StatusBadRequest)
+        return
+    }
 
-	if len(user.PhoneNumber) < 10 || len(user.PhoneNumber) > 13 {
+    // Validasi Nomor Telepon
+    if len(user.PhoneNumber) < 10 || len(user.PhoneNumber) > 13 {
         http.Error(w, `{"error": "Nomor telepon harus antara 10 hingga 13 digit."}`, http.StatusBadRequest)
         return
     }
-	
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
-	if err != nil {
-		http.Error(w, `{"error": "Failed to hash password"}`, http.StatusInternalServerError)
-		return
-	}
-	user.Password = string(hashedPassword)
-	user.Role = "user" 
 
-	// PERBAIKAN: Gunakan nama database dari config, bukan hardcode
-	collection := repository.MongoClient.Database(config.GetConfig().DatabaseName).Collection("users")
+    // Hash password
+    hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
+    if err != nil {
+        http.Error(w, `{"error": "Failed to hash password"}`, http.StatusInternalServerError)
+        return
+    }
+    user.Password = string(hashedPassword)
+    user.Role = "user" 
 
-	count, _ := collection.CountDocuments(context.TODO(), bson.M{"nim": user.NIM})
-	if count > 0 {
-		http.Error(w, `{"error": "NIM already registered"}`, http.StatusConflict)
-		return
-	}
+    collection := repository.MongoClient.Database(config.GetConfig().DatabaseName).Collection("users")
 
-	_, err = collection.InsertOne(context.TODO(), user)
-	if err != nil {
-		http.Error(w, `{"error": "Failed to register user"}`, http.StatusInternalServerError)
-		return
-	}
+    // Cek duplikasi NIM
+    count, _ := collection.CountDocuments(context.TODO(), bson.M{"nim": user.NIM})
+    if count > 0 {
+        http.Error(w, `{"error": "NIM already registered"}`, http.StatusConflict)
+        return
+    }
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(map[string]string{"message": "Registration successful"})
+    // Simpan user ke database
+    _, err = collection.InsertOne(context.TODO(), user)
+    if err != nil {
+        http.Error(w, `{"error": "Failed to register user"}`, http.StatusInternalServerError)
+        return
+    }
+
+    w.Header().Set("Content-Type", "application/json")
+    w.WriteHeader(http.StatusCreated)
+    json.NewEncoder(w).Encode(map[string]string{"message": "Registration successful"})
 }
 
 func LoginHandler(w http.ResponseWriter, r *http.Request) {
@@ -112,6 +115,18 @@ func SubmitRegistrationHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, `{"error": "File size exceeds limit"}`, http.StatusBadRequest)
 		return
 	}
+	
+	// --- PERBAIKAN DIMULAI DI SINI ---
+
+	// Ambil dua pilihan divisi dari form
+	division1 := r.FormValue("division1")
+	division2 := r.FormValue("division2")
+
+	// Validasi backend: pastikan dua pilihan tidak sama
+	if division1 == division2 {
+		http.Error(w, `{"error": "Pilihan Divisi 1 dan 2 tidak boleh sama."}`, http.StatusBadRequest)
+		return
+	}
 
 	// 3. Setup koneksi ke Cloudinary
 	cfg := config.GetConfig()
@@ -140,21 +155,21 @@ func SubmitRegistrationHandler(w http.ResponseWriter, r *http.Request) {
 	// 5. Proses Upload Sertifikat (Opsional)
 	certificateUrl := ""
 	certFile, _, err := r.FormFile("certificate")
-	if err == nil { // Jika file sertifikat ada (bukan error)
+	if err == nil {
 		defer certFile.Close()
 		certUploadResult, err := cld.Upload.Upload(ctx, certFile, uploader.UploadParams{Folder: "himatif-registrations"})
 		if err != nil {
-			// Jika upload sertifikat gagal, kita bisa memilih untuk mengabaikannya atau mengembalikan error
 			log.Println("Warning: failed to upload certificate, but proceeding without it.", err)
 		} else {
 			certificateUrl = certUploadResult.SecureURL
 		}
 	}
 
-	// 6. Simpan URL ke database
+	// 6. Simpan URL dan data form yang sudah benar ke database
 	registration := model.Registration{
 		UserID:         payload.UserID,
-		Division:       r.FormValue("division"),
+		Division1:      division1,
+		Division2:      division2,
 		Motivation:     r.FormValue("motivation"),
 		VisionMission:  r.FormValue("vision_mission"),
 		CvUrl:          cvUrl,
