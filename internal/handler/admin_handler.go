@@ -121,3 +121,32 @@ func GetAllUsersHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(users)
 }
+
+// DeleteRegistrationHandler menghapus data pendaftaran berdasarkan ID
+func DeleteRegistrationHandler(w http.ResponseWriter, r *http.Request) {
+	// Mengambil ID dari parameter URL
+	regID, err := primitive.ObjectIDFromHex(chi.URLParam(r, "id"))
+	if err != nil {
+		http.Error(w, `{"error": "Invalid registration ID"}`, http.StatusBadRequest)
+		return
+	}
+
+	collection := repository.MongoClient.Database(config.GetConfig().DatabaseName).Collection("registrations")
+
+	// Menghapus satu dokumen yang cocok dengan ID
+	result, err := collection.DeleteOne(context.TODO(), bson.M{"_id": regID})
+	if err != nil {
+		http.Error(w, `{"error": "Failed to delete registration"}`, http.StatusInternalServerError)
+		return
+	}
+
+	// Jika tidak ada dokumen yang terhapus (mungkin ID tidak ditemukan)
+	if result.DeletedCount == 0 {
+		http.Error(w, `{"error": "Registration not found"}`, http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"message": "Registration deleted successfully"})
+}
