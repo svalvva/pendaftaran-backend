@@ -12,7 +12,7 @@ require (
 )
 
 require (
-	github.com/cloudinary/cloudinary-go/v2 v2.12.0 // indirect
+	github.com/cloudinary/cloudinary-go/v2 v2.12.0
 	github.com/creasty/defaults v1.7.0 // indirect
 	github.com/golang/snappy v1.0.0 // indirect
 	github.com/google/uuid v1.5.0 // indirect
