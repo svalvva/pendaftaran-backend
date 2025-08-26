@@ -2,13 +2,14 @@
 package handler
 
 import (
-
 	"context"
 	"encoding/json"
 	"log" // Dibutuhkan untuk log.Println di SubmitRegistrationHandler
 	"net/http"
 	"time"
 
+	"github.com/cloudinary/cloudinary-go/v2"
+	"github.com/cloudinary/cloudinary-go/v2/api/uploader"
 	"github.com/ulbithebest/BE-pendaftaran/internal/auth"
 	"github.com/ulbithebest/BE-pendaftaran/internal/config" // <-- PASTIKAN CONFIG DI-IMPORT
 	"github.com/ulbithebest/BE-pendaftaran/internal/middleware"
@@ -18,51 +19,49 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"golang.org/x/crypto/bcrypt"
-	"github.com/cloudinary/cloudinary-go/v2"
-    "github.com/cloudinary/cloudinary-go/v2/api/uploader"
 )
 
 func RegisterHandler(w http.ResponseWriter, r *http.Request) {
-    var user model.User
-    if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
-        http.Error(w, `{"error": "Invalid request body"}`, http.StatusBadRequest)
-        return
-    }
+	var user model.User
+	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
+		http.Error(w, `{"error": "Invalid request body"}`, http.StatusBadRequest)
+		return
+	}
 
-    // Validasi Nomor Telepon
-    if len(user.PhoneNumber) < 10 || len(user.PhoneNumber) > 13 {
-        http.Error(w, `{"error": "Nomor telepon harus antara 10 hingga 13 digit."}`, http.StatusBadRequest)
-        return
-    }
+	// Validasi Nomor Telepon
+	if len(user.PhoneNumber) < 10 || len(user.PhoneNumber) > 13 {
+		http.Error(w, `{"error": "Nomor telepon harus antara 10 hingga 13 digit."}`, http.StatusBadRequest)
+		return
+	}
 
-    // Hash password
-    hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
-    if err != nil {
-        http.Error(w, `{"error": "Failed to hash password"}`, http.StatusInternalServerError)
-        return
-    }
-    user.Password = string(hashedPassword)
-    user.Role = "user" 
+	// Hash password
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
+	if err != nil {
+		http.Error(w, `{"error": "Failed to hash password"}`, http.StatusInternalServerError)
+		return
+	}
+	user.Password = string(hashedPassword)
+	user.Role = "user"
 
-    collection := repository.MongoClient.Database(config.GetConfig().DatabaseName).Collection("users")
+	collection := repository.MongoClient.Database(config.GetConfig().DatabaseName).Collection("users")
 
-    // Cek duplikasi NIM
-    count, _ := collection.CountDocuments(context.TODO(), bson.M{"nim": user.NIM})
-    if count > 0 {
-        http.Error(w, `{"error": "NIM already registered"}`, http.StatusConflict)
-        return
-    }
+	// Cek duplikasi NIM
+	count, _ := collection.CountDocuments(context.TODO(), bson.M{"nim": user.NIM})
+	if count > 0 {
+		http.Error(w, `{"error": "NIM already registered"}`, http.StatusConflict)
+		return
+	}
 
-    // Simpan user ke database
-    _, err = collection.InsertOne(context.TODO(), user)
-    if err != nil {
-        http.Error(w, `{"error": "Failed to register user"}`, http.StatusInternalServerError)
-        return
-    }
+	// Simpan user ke database
+	_, err = collection.InsertOne(context.TODO(), user)
+	if err != nil {
+		http.Error(w, `{"error": "Failed to register user"}`, http.StatusInternalServerError)
+		return
+	}
 
-    w.Header().Set("Content-Type", "application/json")
-    w.WriteHeader(http.StatusCreated)
-    json.NewEncoder(w).Encode(map[string]string{"message": "Registration successful"})
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(map[string]string{"message": "Registration successful"})
 }
 
 func LoginHandler(w http.ResponseWriter, r *http.Request) {
@@ -115,8 +114,6 @@ func SubmitRegistrationHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, `{"error": "File size exceeds limit"}`, http.StatusBadRequest)
 		return
 	}
-	
-	// --- PERBAIKAN DIMULAI DI SINI ---
 
 	// Ambil dua pilihan divisi dari form
 	division1 := r.FormValue("division1")
@@ -145,7 +142,10 @@ func SubmitRegistrationHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer file.Close()
 
-	uploadResult, err := cld.Upload.Upload(ctx, file, uploader.UploadParams{Folder: "himatif-registrations"})
+	uploadResult, err := cld.Upload.Upload(ctx, file, uploader.UploadParams{
+		Folder:       "himatif-registrations",
+		ResourceType: "raw", // INI SUDAH DIPERBAIKI
+	})
 	if err != nil {
 		http.Error(w, `{"error": "Failed to upload CV"}`, http.StatusInternalServerError)
 		return
@@ -157,7 +157,10 @@ func SubmitRegistrationHandler(w http.ResponseWriter, r *http.Request) {
 	certFile, _, err := r.FormFile("certificate")
 	if err == nil {
 		defer certFile.Close()
-		certUploadResult, err := cld.Upload.Upload(ctx, certFile, uploader.UploadParams{Folder: "himatif-registrations"})
+		certUploadResult, err := cld.Upload.Upload(ctx, certFile, uploader.UploadParams{
+			Folder:       "himatif-registrations",
+			ResourceType: "raw", // INI SUDAH DIPERBAIKI
+		})
 		if err != nil {
 			log.Println("Warning: failed to upload certificate, but proceeding without it.", err)
 		} else {
@@ -191,7 +194,6 @@ func SubmitRegistrationHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{"message": "Registration submitted successfully"})
 }
 
-
 func GetUserProfileHandler(w http.ResponseWriter, r *http.Request) {
 	payload, ok := middleware.GetPayloadFromContext(r.Context())
 	if !ok {
@@ -224,7 +226,7 @@ func GetUserRegistrationHandler(w http.ResponseWriter, r *http.Request) {
 
 	var registration model.Registration
 	collection := repository.MongoClient.Database(config.GetConfig().DatabaseName).Collection("registrations")
-	
+
 	// Cari pendaftaran berdasarkan user_id dari token
 	err := collection.FindOne(context.TODO(), bson.M{"user_id": payload.UserID}).Decode(&registration)
 	if err != nil {

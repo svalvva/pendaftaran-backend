@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"net/http"
+
 	// "strings"
 
 	// Pastikan path import ini sesuai dengan nama modul di go.mod Anda
@@ -32,7 +33,7 @@ func main() {
 
 	// Setup CORS (Cross-Origin Resource Sharing)
 	r.Use(cors.Handler(cors.Options{
-		AllowedOrigins:   []string{"http://localhost:5500", "http://127.0.0.1:5500"}, // Sesuaikan dengan alamat frontend Anda
+		AllowedOrigins:   []string{"http://localhost:5500", "http://127.0.0.1:5500"},   // Sesuaikan dengan alamat frontend Anda
 		AllowedMethods:   []string{"GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"}, // TAMBAHKAN PATCH
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
 		ExposedHeaders:   []string{"Link"},
@@ -63,7 +64,7 @@ func main() {
 		// --- Routes khusus admin ---
 		r.Route("/admin", func(r chi.Router) {
 			r.Use(middleware.AdminOnlyMiddleware) // Perlindungan tambahan, hanya untuk admin
-			
+
 			// --- PERUBAHAN ENDPOINT ADMIN ---
 			r.Get("/registrations-with-details", handler.GetAllRegistrationsDetailHandler)
 			// r.Patch("/registrations/{id}/status", handler.UpdateRegistrationStatusHandler)
