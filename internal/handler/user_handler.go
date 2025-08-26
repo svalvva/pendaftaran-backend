@@ -142,9 +142,10 @@ func SubmitRegistrationHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer file.Close()
 
+	// MODIFIKASI DI SINI
 	uploadResult, err := cld.Upload.Upload(ctx, file, uploader.UploadParams{
-		Folder:       "himatif-registrations",
-		ResourceType: "raw", // INI SUDAH DIPERBAIKI
+		// HAPUS PARAMETER LAMA DAN GANTI DENGAN INI
+		UploadPreset: "himatif_public_raw",
 	})
 	if err != nil {
 		http.Error(w, `{"error": "Failed to upload CV"}`, http.StatusInternalServerError)
@@ -158,8 +159,8 @@ func SubmitRegistrationHandler(w http.ResponseWriter, r *http.Request) {
 	if err == nil {
 		defer certFile.Close()
 		certUploadResult, err := cld.Upload.Upload(ctx, certFile, uploader.UploadParams{
-			Folder:       "himatif-registrations",
-			ResourceType: "raw", // INI SUDAH DIPERBAIKI
+			// GUNAKAN PRESET YANG SAMA DI SINI
+			UploadPreset: "himatif_public_raw",
 		})
 		if err != nil {
 			log.Println("Warning: failed to upload certificate, but proceeding without it.", err)
