@@ -4,12 +4,15 @@ package handler
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log" // Dibutuhkan untuk log.Println di SubmitRegistrationHandler
 	"net/http"
-	"strings"
 	"time"
 
+	// "time"
+
 	"github.com/cloudinary/cloudinary-go/v2"
+	"github.com/cloudinary/cloudinary-go/v2/api"
 	"github.com/cloudinary/cloudinary-go/v2/api/uploader"
 	"github.com/ulbithebest/BE-pendaftaran/internal/auth"
 	"github.com/ulbithebest/BE-pendaftaran/internal/config" // <-- PASTIKAN CONFIG DI-IMPORT
@@ -136,40 +139,54 @@ func SubmitRegistrationHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := context.Background()
 
 	// 4. Proses Upload CV (Wajib)
-	file, _, err := r.FormFile("cv")
+	file, _, err := r.FormFile("cv") // Kita tidak butuh header, jadi gunakan _
 	if err != nil {
 		http.Error(w, `{"error": "CV file is required"}`, http.StatusBadRequest)
 		return
 	}
 	defer file.Close()
 
+	// Buat Public ID yang unik untuk CV
+	cvPublicID := fmt.Sprintf("himatif-registrations/%s_cv_%d",
+		payload.NIM,
+		time.Now().Unix())
+
 	uploadResult, err := cld.Upload.Upload(ctx, file, uploader.UploadParams{
-		UploadPreset: "himatif_final",
+		PublicID:     cvPublicID,
 		ResourceType: "raw",
+		Overwrite:    api.Bool(true),
 	})
 	if err != nil {
+		log.Printf("Cloudinary CV upload error: %v", err)
 		http.Error(w, `{"error": "Failed to upload CV"}`, http.StatusInternalServerError)
 		return
 	}
 
-	// KEMBALI KE METODE strings.Replace YANG SUDAH TERBUKTI BENAR
-	cvUrl := strings.Replace(uploadResult.SecureURL, "/image/upload/", "/raw/upload/", 1)
+	// CUKUP GUNAKAN URL ASLI DARI CLOUDINARY
+	cvUrl := uploadResult.SecureURL
 
 	// 5. Proses Upload Sertifikat (Opsional)
 	certificateUrl := ""
-	certFile, _, err := r.FormFile("certificate")
+	certFile, _, err := r.FormFile("certificate") // Kita tidak butuh header, jadi gunakan _
 	if err == nil {
 		defer certFile.Close()
+
+		// Buat Public ID yang unik untuk sertifikat
+		certPublicID := fmt.Sprintf("himatif-registrations/%s_cert_%d",
+			payload.NIM,
+			time.Now().Unix())
+
 		certUploadResult, err := cld.Upload.Upload(ctx, certFile, uploader.UploadParams{
-			UploadPreset: "himatif_final",
+			PublicID:     certPublicID,
 			ResourceType: "raw",
+			Overwrite:    api.Bool(true),
 		})
 
 		if err != nil {
 			log.Println("Warning: failed to upload certificate, but proceeding without it.", err)
 		} else {
-			// LAKUKAN HAL YANG SAMA UNTUK SERTIFIKAT
-			certificateUrl = strings.Replace(certUploadResult.SecureURL, "/image/upload/", "/raw/upload/", 1)
+			// CUKUP GUNAKAN URL ASLI DARI CLOUDINARY
+			certificateUrl = certUploadResult.SecureURL
 		}
 	}
 
