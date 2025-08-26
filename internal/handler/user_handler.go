@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"log" // Dibutuhkan untuk log.Println di SubmitRegistrationHandler
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/cloudinary/cloudinary-go/v2"
@@ -142,16 +143,17 @@ func SubmitRegistrationHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer file.Close()
 
-	// MODIFIKASI DI SINI
 	uploadResult, err := cld.Upload.Upload(ctx, file, uploader.UploadParams{
-		// HAPUS PARAMETER LAMA DAN GANTI DENGAN INI
-		UploadPreset: "himatif_public_raw",
+		UploadPreset: "himatif_final",
+		ResourceType: "raw",
 	})
 	if err != nil {
 		http.Error(w, `{"error": "Failed to upload CV"}`, http.StatusInternalServerError)
 		return
 	}
-	cvUrl := uploadResult.SecureURL
+
+	// KEMBALI KE METODE strings.Replace YANG SUDAH TERBUKTI BENAR
+	cvUrl := strings.Replace(uploadResult.SecureURL, "/image/upload/", "/raw/upload/", 1)
 
 	// 5. Proses Upload Sertifikat (Opsional)
 	certificateUrl := ""
@@ -159,13 +161,15 @@ func SubmitRegistrationHandler(w http.ResponseWriter, r *http.Request) {
 	if err == nil {
 		defer certFile.Close()
 		certUploadResult, err := cld.Upload.Upload(ctx, certFile, uploader.UploadParams{
-			// GUNAKAN PRESET YANG SAMA DI SINI
-			UploadPreset: "himatif_public_raw",
+			UploadPreset: "himatif_final",
+			ResourceType: "raw",
 		})
+
 		if err != nil {
 			log.Println("Warning: failed to upload certificate, but proceeding without it.", err)
 		} else {
-			certificateUrl = certUploadResult.SecureURL
+			// LAKUKAN HAL YANG SAMA UNTUK SERTIFIKAT
+			certificateUrl = strings.Replace(certUploadResult.SecureURL, "/image/upload/", "/raw/upload/", 1)
 		}
 	}
 
