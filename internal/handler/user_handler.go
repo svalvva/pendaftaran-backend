@@ -153,7 +153,7 @@ func SubmitRegistrationHandler(w http.ResponseWriter, r *http.Request) {
 
 	uploadResult, err := cld.Upload.Upload(ctx, file, uploader.UploadParams{
 		PublicID:     cvPublicID,
-		ResourceType: "raw",
+		ResourceType: "image",
 		Overwrite:    api.Bool(true),
 		AccessControl: []api.AccessControlRule{{AccessType: "anonymous"}},
 	})
@@ -179,7 +179,7 @@ func SubmitRegistrationHandler(w http.ResponseWriter, r *http.Request) {
 
 		certUploadResult, err := cld.Upload.Upload(ctx, certFile, uploader.UploadParams{
 			PublicID:     certPublicID,
-			ResourceType: "raw",
+			ResourceType: "image",
 			Overwrite:    api.Bool(true),
 			AccessControl: []api.AccessControlRule{{AccessType: "anonymous"}},
 		})
