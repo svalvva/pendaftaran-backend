@@ -55,6 +55,7 @@ func main() {
 		r.Get("/user/profile", handler.GetUserProfileHandler)
 		r.Post("/user/registration", handler.SubmitRegistrationHandler)
 		r.Get("/user/my-registration", handler.GetUserRegistrationHandler)
+		r.Get("/info", handler.GetAllInfoHandler)
 
 		// --- TAMBAHAN: File Server untuk CV (dilindungi otentikasi) ---
 		// Ini akan membuat file di folder /uploads bisa diakses via URL
@@ -71,6 +72,9 @@ func main() {
 			r.Patch("/registrations/{id}", handler.UpdateRegistrationDetailsHandler)
 			r.Get("/users", handler.GetAllUsersHandler)
 			r.Delete("/registrations/{id}", handler.DeleteRegistrationHandler)
+			r.Post("/info", handler.CreateInfoHandler)
+			r.Put("/info/{id}", handler.UpdateInfoHandler)
+			r.Delete("/info/{id}", handler.DeleteInfoHandler)
 		})
 	})
 
