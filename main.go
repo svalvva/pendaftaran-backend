@@ -70,6 +70,7 @@ func main() {
 			r.Get("/registrations-with-details", handler.GetAllRegistrationsDetailHandler)
 			// r.Patch("/registrations/{id}/status", handler.UpdateRegistrationStatusHandler)
 			r.Patch("/registrations/{id}", handler.UpdateRegistrationDetailsHandler)
+			r.Patch("/registrations/bulk-update", handler.BulkUpdateStatusHandler) 
 			r.Get("/users", handler.GetAllUsersHandler)
 			r.Delete("/registrations/{id}", handler.DeleteRegistrationHandler)
 			r.Post("/info", handler.CreateInfoHandler)
