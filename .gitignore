@@ -1,0 +1,13 @@
+.env
+
+pendaftaran-backend
+pendaftaran-backend.exe
+
+# Direktori yang berisi file upload dari pengguna (jika disimpan secara lokal)
+/uploads/
+
+.DS_Store
+Thumbs.db
+
+.vscode/
+.idea/

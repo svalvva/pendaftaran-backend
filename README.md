@@ -1,41 +1,34 @@
-# Pendaftaran Anggota HIMATIF - Backend
+# Pendaftaran Anggota HIMATIF - Backend 🚀
 
 ![Go](https://img.shields.io/badge/Go-00ADD8?style=for-the-badge&logo=go&logoColor=white)
 ![MongoDB](https://img.shields.io/badge/MongoDB-47A248?style=for-the-badge&logo=mongodb&logoColor=white)
+![Cloudinary](https://img.shields.io/badge/Cloudinary-3448C5?style=for-the-badge&logo=Cloudinary&logoColor=white)
 ![Paseto](https://img.shields.io/badge/Paseto-000000?style=for-the-badge&logo=paseto&logoColor=white)
 
-Ini adalah layanan backend untuk aplikasi Pendaftaran Anggota Baru Himpunan Mahasiswa Teknik Informatika (HIMATIF). Dibangun menggunakan bahasa pemrograman Go dengan arsitektur yang bersih dan terpisah, layanan ini menyediakan REST API untuk mengelola data user, pendaftaran, dan otentikasi.
+Selamat datang di layanan backend untuk Aplikasi Pendaftaran Anggota Baru HIMATIF! Dibuat dengan Go, layanan ini menyediakan REST API yang tangguh dan aman untuk mengelola seluruh alur pendaftaran, mulai dari otentikasi pengguna hingga manajemen file di *cloud*.
 
 ---
 
-## 🚀 Fitur Utama
+## ✨ Fitur Unggulan
 
-- **Otentikasi Aman**: Menggunakan **Paseto (PASETO)**, alternatif yang lebih aman dari JWT, untuk otentikasi berbasis token.
-- **Manajemen User**: Pendaftaran (Register) dan Login user.
-- **Manajemen Pendaftaran**: User dapat mengirimkan formulir pendaftaran lengkap dengan upload CV.
-- **Dashboard Admin**: Admin dapat melihat, mengelola, dan mengubah status semua pendaftar.
-- **Penyimpanan File**: CV yang diunggah disimpan di server dan path-nya direkam di database.
-- **Arsitektur Decoupled**: Dirancang untuk bekerja secara terpisah dengan antarmuka frontend manapun.
-
----
-
-## 🛠️ Teknologi yang Digunakan
-
-- **Bahasa**: Go (v1.18+)
-- **Database**: MongoDB Atlas
-- **Router**: Chi (v5)
-- **Otentikasi**: Paseto (v2)
-- **Driver DB**: `go.mongodb.org/mongo-driver`
-- **Lainnya**: `godotenv` untuk manajemen environment, `bcrypt` untuk hashing password.
+-   **Otentikasi Modern & Aman**: Menggunakan **Paseto (PASETO)**, alternatif superior dari JWT, untuk token yang lebih aman.
+-   **Manajemen User Lengkap**: Registrasi dan Login untuk calon anggota baru.
+-   **Pendaftaran Online**: Pengguna dapat mengisi formulir pendaftaran secara lengkap.
+-   **Cloud File Uploads**: CV dan sertifikat diunggah langsung ke **Cloudinary**, memastikan penyimpanan file yang efisien dan aman.
+-   **Dashboard Admin Komprehensif**: Admin dapat melihat, mengelola, memperbarui status (termasuk aksi massal), dan menghapus pendaftar.
+-   **Manajemen Informasi**: Admin dapat membuat, membaca, memperbarui, dan menghapus pengumuman atau informasi untuk semua pengguna.
 
 ---
 
-## 📋 Prasyarat
+## 🛠️ Tumpukan Teknologi
 
-Sebelum memulai, pastikan Anda telah menginstal:
-- [Go](https://golang.org/doc/install) (versi 1.18 atau lebih baru)
-- [MongoDB Atlas Account](https://www.mongodb.com/cloud/atlas) (Anda bisa menggunakan cluster gratis)
-- Git
+-   **Bahasa**: Go (v1.23+)
+-   **Database**: MongoDB Atlas
+-   **Router**: Chi (v5)
+-   **Otentikasi**: Paseto (v2)
+-   **Penyimpanan File**: Cloudinary
+-   **Driver DB**: `go.mongodb.org/mongo-driver`
+-   **Lainnya**: `godotenv` untuk manajemen *environment*, `bcrypt` untuk *hashing* password.
 
 ---
 
@@ -48,7 +41,7 @@ Sebelum memulai, pastikan Anda telah menginstal:
     ```
 
 2.  **Siapkan file environment:**
-    Buat file bernama `.env` di direktori utama dan isi dengan format berikut:
+    Buat file `.env` di direktori utama dan isi dengan format berikut:
     ```env
     # Ambil dari MongoDB Atlas (klik Connect -> Drivers)
     MONGO_URI="mongodb+srv://<user>:<password>@<cluster-url>/<db-name>?retryWrites=true&w=majority"
@@ -59,17 +52,21 @@ Sebelum memulai, pastikan Anda telah menginstal:
 
     # Port untuk server backend
     SERVER_PORT=":8080"
+    
+    # Kredensial dari akun Cloudinary Anda
+    CLOUDINARY_CLOUD_NAME="<your_cloud_name>"
+    CLOUDINARY_API_KEY="<your_api_key>"
+    CLOUDINARY_API_SECRET="<your_api_secret>"
     ```
 
 3.  **Instal dependensi:**
-    Go akan mengunduh semua dependensi yang dibutuhkan secara otomatis. Anda bisa merapikannya dengan:
     ```bash
     go mod tidy
     ```
 
 4.  **Jalankan server:**
     ```bash
-    go run ./cmd/main/main.go
+    go run ./main.go
     ```
     Server akan berjalan di `http://localhost:8080`.
 
@@ -81,14 +78,20 @@ Sebelum memulai, pastikan Anda telah menginstal:
 - `POST /register`: Mendaftarkan user baru.
 - `POST /login`: Login user dan mendapatkan token Paseto.
 
-### User (Memerlukan Token)
+### Pengguna (Memerlukan Token)
 - `GET /api/user/profile`: Mendapatkan detail profil user yang sedang login.
-- `POST /api/user/registration`: Mengirimkan formulir pendaftaran (termasuk upload CV).
+- `POST /api/user/registration`: Mengirimkan formulir pendaftaran (termasuk upload CV & sertifikat).
 - `GET /api/user/my-registration`: Mendapatkan status pendaftaran user yang sedang login.
+- `GET /api/info`: Mendapatkan semua informasi/pengumuman terbaru.
 
 ### Admin (Memerlukan Token & Role Admin)
 - `GET /api/admin/registrations-with-details`: Mendapatkan daftar semua pendaftar beserta detailnya.
-- `PATCH /api/admin/registrations/{id}`: Memperbarui detail pendaftaran (status, jadwal wawancara).
-- `GET /api/uploads/{nama_file_cv}`: Mengakses file CV yang telah diunggah.
+- `GET /api/admin/users`: Mendapatkan daftar semua pengguna terdaftar.
+- `PATCH /api/admin/registrations/{id}`: Memperbarui detail pendaftaran (status, jadwal wawancara, dll).
+- `PATCH /api/admin/registrations/bulk-update`: Memperbarui status beberapa pendaftar sekaligus.
+- `DELETE /api/admin/registrations/{id}`: Menghapus data pendaftaran.
+- `POST /api/admin/info`: Membuat informasi/pengumuman baru.
+- `PUT /api/admin/info/{id}`: Memperbarui informasi yang sudah ada.
+- `DELETE /api/admin/info/{id}`: Menghapus informasi.
 
 ---
