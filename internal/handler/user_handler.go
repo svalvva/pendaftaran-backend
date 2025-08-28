@@ -155,6 +155,7 @@ func SubmitRegistrationHandler(w http.ResponseWriter, r *http.Request) {
 		PublicID:     cvPublicID,
 		ResourceType: "raw",
 		Overwrite:    api.Bool(true),
+		AccessControl: []api.AccessControlRule{{AccessType: "anonymous"}},
 	})
 	if err != nil {
 		log.Printf("Cloudinary CV upload error: %v", err)
@@ -180,6 +181,7 @@ func SubmitRegistrationHandler(w http.ResponseWriter, r *http.Request) {
 			PublicID:     certPublicID,
 			ResourceType: "raw",
 			Overwrite:    api.Bool(true),
+			AccessControl: []api.AccessControlRule{{AccessType: "anonymous"}},
 		})
 
 		if err != nil {
