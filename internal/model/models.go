@@ -19,14 +19,14 @@ type User struct {
 type Registration struct {
 	ID            primitive.ObjectID `bson:"_id,omitempty" json:"id,omitempty"`
 	UserID        primitive.ObjectID `bson:"user_id" json:"user_id"`
-	Division1        string             `bson:"division1" json:"division1"`           // <-- TAMBAHKAN INI
-	Division2        string             `bson:"division2" json:"division2"`  
+	Division1        string             `bson:"division1" json:"division1"`
+	Division2        string             `bson:"division2" json:"division2"`
 	Motivation    string             `bson:"motivation" json:"motivation"`
 	VisionMission string             `bson:"vision_mission" json:"vision_mission"`
 	InterviewSchedule string         `bson:"interview_schedule,omitempty" json:"interview_schedule,omitempty"`
 	InterviewLocation string         `bson:"interview_location,omitempty" json:"interview_location,omitempty"`
-	CvUrl            string          `bson:"cv_url" json:"cv_url"`                                       // <-- UBAH INI
-	CertificateUrl   string          `bson:"certificate_url,omitempty" json:"certificate_url,omitempty"`
+	CvUrls           []string          `bson:"cv_urls" json:"cv_urls"`                                       // <-- PERUBAHAN DISINI
+	CertificateUrls  []string          `bson:"certificate_urls,omitempty" json:"certificate_urls,omitempty"` // <-- PERUBAHAN DISINI
 	Status        string             `bson:"status" json:"status"`
 	Note          string             `bson:"note" json:"note"`
 	UpdatedAt     primitive.DateTime `bson:"updated_at" json:"updated_at"`
@@ -36,14 +36,14 @@ type Registration struct {
 type RegistrationDetail struct {
 	ID            primitive.ObjectID `bson:"_id" json:"id"`
 	UserID        primitive.ObjectID `bson:"user_id" json:"user_id"`
-	Name          string             `bson:"name" json:"name"` 
+	Name          string             `bson:"name" json:"name"`
 	NIM           string             `bson:"nim" json:"nim"`
-	Division1        string             `bson:"division1" json:"division1"`           // <-- TAMBAHKAN INI
-	Division2        string             `bson:"division2" json:"division2"`  
+	Division1        string             `bson:"division1" json:"division1"`
+	Division2        string             `bson:"division2" json:"division2"`
 	Motivation    string             `bson:"motivation" json:"motivation"`
 	VisionMission string             `bson:"vision_mission" json:"vision_mission"`
-	CvUrl            string          `bson:"cv_url" json:"cv_url"`                                       // <-- UBAH INI
-	CertificateUrl   string          `bson:"certificate_url,omitempty" json:"certificate_url,omitempty"`
+	CvUrls           []string          `bson:"cv_urls" json:"cv_urls"`                                       // <-- PERUBAHAN DISINI
+	CertificateUrls  []string          `bson:"certificate_urls,omitempty" json:"certificate_urls,omitempty"` // <-- PERUBAHAN DISINI
 	Status        string             `bson:"status" json:"status"`
 	Note          string             `bson:"note,omitempty" json:"note,omitempty"`
 	UpdatedAt     primitive.DateTime `bson:"updated_at" json:"updated_at"`

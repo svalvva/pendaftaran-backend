@@ -6,10 +6,10 @@ import (
 	"encoding/json"
 	"net/http"
 	"time"
-	
+
 	"github.com/go-chi/chi/v5"
 	"github.com/ulbithebest/BE-pendaftaran/internal/config"
-	"github.com/ulbithebest/BE-pendaftaran/internal/model" // <-- PERBAIKAN 1: Tambahkan import model
+	"github.com/ulbithebest/BE-pendaftaran/internal/model"
 	"github.com/ulbithebest/BE-pendaftaran/internal/repository"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -29,7 +29,11 @@ func GetAllRegistrationsDetailHandler(w http.ResponseWriter, r *http.Request) {
 		bson.D{{Key: "$project", Value: bson.D{
 			{Key: "_id", Value: 1}, {Key: "user_id", Value: 1}, {Key: "division1", Value: 1},
 			{Key: "division2", Value: 1}, {Key: "motivation", Value: 1}, {Key: "vision_mission", Value: 1},
-			{Key: "cv_url", Value: 1}, {Key: "certificate_url", Value: 1}, {Key: "status", Value: 1},
+			// --- PERBAIKAN DI SINI ---
+			{Key: "cv_urls", Value: 1}, 
+			{Key: "certificate_urls", Value: 1},
+			// -------------------------
+			{Key: "status", Value: 1},
 			{Key: "note", Value: 1}, {Key: "updated_at", Value: 1}, {Key: "name", Value: "$userDetails.name"},
 			{Key: "nim", Value: "$userDetails.nim"},
 		}}},
@@ -42,6 +46,7 @@ func GetAllRegistrationsDetailHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer cursor.Close(context.TODO())
 
+	// Perhatikan, model yang digunakan sekarang adalah RegistrationDetail yang sudah diupdate
 	var results []model.RegistrationDetail
 	if err = cursor.All(context.TODO(), &results); err != nil {
 		http.Error(w, `{"error": "Failed to decode registrations"}`, http.StatusInternalServerError)
@@ -54,6 +59,7 @@ func GetAllRegistrationsDetailHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(results)
 }
 
+// ... (sisa kode handler tidak perlu diubah)
 func UpdateRegistrationDetailsHandler(w http.ResponseWriter, r *http.Request) {
 	regID, err := primitive.ObjectIDFromHex(chi.URLParam(r, "id"))
 	if err != nil {
@@ -61,7 +67,11 @@ func UpdateRegistrationDetailsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var payload model.Registration
+	var payload struct {
+		Status             string `json:"status"`
+		InterviewSchedule  string `json:"interview_schedule"`
+		InterviewLocation  string `json:"interview_location"`
+	}
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
 		http.Error(w, `{"error": "Invalid request body"}`, http.StatusBadRequest)
 		return
@@ -75,11 +85,14 @@ func UpdateRegistrationDetailsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	if payload.InterviewSchedule != "" {
 		updateFields["interview_schedule"] = payload.InterviewSchedule
+	} else {
+		updateFields["interview_schedule"] = "" // Kosongkan jika tidak diisi
 	}
 	if payload.InterviewLocation != "" {
 		updateFields["interview_location"] = payload.InterviewLocation
+	} else {
+		updateFields["interview_location"] = "" // Kosongkan jika tidak diisi
 	}
-	
 
 	updateFields["updated_at"] = primitive.NewDateTimeFromTime(time.Now())
 	
@@ -95,7 +108,6 @@ func UpdateRegistrationDetailsHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{"message": "Registration updated successfully"})
 }
 
-// FITUR BARU: Handler untuk update status beberapa pendaftar sekaligus
 func BulkUpdateStatusHandler(w http.ResponseWriter, r *http.Request) {
     var payload struct {
         IDs    []string `json:"ids"`
@@ -112,7 +124,6 @@ func BulkUpdateStatusHandler(w http.ResponseWriter, r *http.Request) {
         return
     }
 
-    // Konversi string IDs menjadi BSON ObjectIDs
     var objectIDs []primitive.ObjectID
     for _, idStr := range payload.IDs {
         id, err := primitive.ObjectIDFromHex(idStr)
@@ -125,10 +136,8 @@ func BulkUpdateStatusHandler(w http.ResponseWriter, r *http.Request) {
 
     collection := repository.MongoClient.Database(config.GetConfig().DatabaseName).Collection("registrations")
     
-    // Filter untuk mencari semua dokumen dengan ID yang ada di dalam array
     filter := bson.M{"_id": bson.M{"$in": objectIDs}}
     
-    // Data yang akan di-update
     update := bson.M{
         "$set": bson.M{
             "status":     payload.Status,
@@ -136,7 +145,6 @@ func BulkUpdateStatusHandler(w http.ResponseWriter, r *http.Request) {
         },
     }
 
-    // Lakukan operasi UpdateMany
     result, err := collection.UpdateMany(context.TODO(), filter, update)
     if err != nil {
         http.Error(w, `{"error": "Failed to bulk update registrations"}`, http.StatusInternalServerError)
@@ -154,7 +162,6 @@ func BulkUpdateStatusHandler(w http.ResponseWriter, r *http.Request) {
 func GetAllUsersHandler(w http.ResponseWriter, r *http.Request) {
 	collection := repository.MongoClient.Database(config.GetConfig().DatabaseName).Collection("users")
 
-	// Opsi untuk tidak menyertakan field password demi keamanan
 	opts := options.Find().SetProjection(bson.M{"password": 0})
 
 	cursor, err := collection.Find(context.TODO(), bson.D{}, opts)
@@ -178,9 +185,7 @@ func GetAllUsersHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(users)
 }
 
-// DeleteRegistrationHandler menghapus data pendaftaran berdasarkan ID
 func DeleteRegistrationHandler(w http.ResponseWriter, r *http.Request) {
-	// Mengambil ID dari parameter URL
 	regID, err := primitive.ObjectIDFromHex(chi.URLParam(r, "id"))
 	if err != nil {
 		http.Error(w, `{"error": "Invalid registration ID"}`, http.StatusBadRequest)
@@ -189,14 +194,12 @@ func DeleteRegistrationHandler(w http.ResponseWriter, r *http.Request) {
 
 	collection := repository.MongoClient.Database(config.GetConfig().DatabaseName).Collection("registrations")
 
-	// Menghapus satu dokumen yang cocok dengan ID
 	result, err := collection.DeleteOne(context.TODO(), bson.M{"_id": regID})
 	if err != nil {
 		http.Error(w, `{"error": "Failed to delete registration"}`, http.StatusInternalServerError)
 		return
 	}
 
-	// Jika tidak ada dokumen yang terhapus (mungkin ID tidak ditemukan)
 	if result.DeletedCount == 0 {
 		http.Error(w, `{"error": "Registration not found"}`, http.StatusNotFound)
 		return

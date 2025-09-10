@@ -5,17 +5,15 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log" // Dibutuhkan untuk log.Println di SubmitRegistrationHandler
+	"log"
 	"net/http"
 	"time"
-
-	// "time"
 
 	"github.com/cloudinary/cloudinary-go/v2"
 	"github.com/cloudinary/cloudinary-go/v2/api"
 	"github.com/cloudinary/cloudinary-go/v2/api/uploader"
 	"github.com/ulbithebest/BE-pendaftaran/internal/auth"
-	"github.com/ulbithebest/BE-pendaftaran/internal/config" // <-- PASTIKAN CONFIG DI-IMPORT
+	"github.com/ulbithebest/BE-pendaftaran/internal/config"
 	"github.com/ulbithebest/BE-pendaftaran/internal/middleware"
 	"github.com/ulbithebest/BE-pendaftaran/internal/model"
 	"github.com/ulbithebest/BE-pendaftaran/internal/repository"
@@ -32,7 +30,6 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Validasi Nomor Telepon
 	if len(user.PhoneNumber) < 10 || len(user.PhoneNumber) > 13 {
 		http.Error(w, `{"error": "Nomor telepon harus antara 10 hingga 13 digit."}`, http.StatusBadRequest)
 		return
@@ -79,7 +76,6 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var user model.User
-	// PERBAIKAN: Gunakan nama database dari config, bukan hardcode
 	collection := repository.MongoClient.Database(config.GetConfig().DatabaseName).Collection("users")
 	err := collection.FindOne(context.TODO(), bson.M{"nim": creds.NPM}).Decode(&user)
 	if err != nil {
@@ -114,16 +110,13 @@ func SubmitRegistrationHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 2. Parse form (maks 10MB)
-	if err := r.ParseMultipartForm(10 << 20); err != nil {
-		http.Error(w, `{"error": "File size exceeds limit"}`, http.StatusBadRequest)
+	if err := r.ParseMultipartForm(20 << 20); err != nil { // Batas total 20MB
+		http.Error(w, `{"error": "Request size exceeds limit"}`, http.StatusBadRequest)
 		return
 	}
 
-	// Ambil dua pilihan divisi dari form
 	division1 := r.FormValue("division1")
 	division2 := r.FormValue("division2")
-
-	// Validasi backend: pastikan dua pilihan tidak sama
 	if division1 == division2 {
 		http.Error(w, `{"error": "Pilihan Divisi 1 dan 2 tidak boleh sama."}`, http.StatusBadRequest)
 		return
@@ -138,72 +131,75 @@ func SubmitRegistrationHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx := context.Background()
 
-	// 4. Proses Upload CV (Wajib)
-	file, _, err := r.FormFile("cv") // Kita tidak butuh header, jadi gunakan _
-	if err != nil {
+	// --- LOGIKA UPLOAD CV (BANYAK FILE) ---
+	cvFiles := r.MultipartForm.File["cv"]
+	if len(cvFiles) == 0 {
 		http.Error(w, `{"error": "CV file is required"}`, http.StatusBadRequest)
 		return
 	}
-	defer file.Close()
 
-	// Buat Public ID yang unik untuk CV
-	cvPublicID := fmt.Sprintf("himatif-registrations/%s_cv_%d",
-		payload.NIM,
-		time.Now().Unix())
+	var cvUrls []string
+	for i, fileHeader := range cvFiles {
+		file, err := fileHeader.Open()
+		if err != nil {
+			http.Error(w, `{"error": "Failed to open CV file"}`, http.StatusInternalServerError)
+			return
+		}
+		defer file.Close()
 
-	uploadResult, err := cld.Upload.Upload(ctx, file, uploader.UploadParams{
-		PublicID:     cvPublicID,
-		ResourceType: "image",
-		Overwrite:    api.Bool(true),
-		AccessControl: []api.AccessControlRule{{AccessType: "anonymous"}},
-	})
-	if err != nil {
-		log.Printf("Cloudinary CV upload error: %v", err)
-		http.Error(w, `{"error": "Failed to upload CV"}`, http.StatusInternalServerError)
-		return
-	}
-
-	// CUKUP GUNAKAN URL ASLI DARI CLOUDINARY
-	cvUrl := uploadResult.SecureURL
-
-	// 5. Proses Upload Sertifikat (Opsional)
-	certificateUrl := ""
-	certFile, _, err := r.FormFile("certificate") // Kita tidak butuh header, jadi gunakan _
-	if err == nil {
-		defer certFile.Close()
-
-		// Buat Public ID yang unik untuk sertifikat
-		certPublicID := fmt.Sprintf("himatif-registrations/%s_cert_%d",
-			payload.NIM,
-			time.Now().Unix())
-
-		certUploadResult, err := cld.Upload.Upload(ctx, certFile, uploader.UploadParams{
-			PublicID:     certPublicID,
+		publicID := fmt.Sprintf("himatif-registrations/%s_cv_%d_%d", payload.NIM, time.Now().Unix(), i)
+		uploadResult, err := cld.Upload.Upload(ctx, file, uploader.UploadParams{
+			PublicID:     publicID,
 			ResourceType: "image",
 			Overwrite:    api.Bool(true),
-			AccessControl: []api.AccessControlRule{{AccessType: "anonymous"}},
 		})
-
 		if err != nil {
-			log.Println("Warning: failed to upload certificate, but proceeding without it.", err)
-		} else {
-			// CUKUP GUNAKAN URL ASLI DARI CLOUDINARY
-			certificateUrl = certUploadResult.SecureURL
+			log.Printf("Cloudinary CV upload error: %v", err)
+			http.Error(w, `{"error": "Failed to upload one of the CVs"}`, http.StatusInternalServerError)
+			return
+		}
+		cvUrls = append(cvUrls, uploadResult.SecureURL)
+	}
+
+	// --- LOGIKA UPLOAD SERTIFIKAT (BANYAK FILE, OPSIONAL) ---
+	certFiles := r.MultipartForm.File["certificate"]
+	var certificateUrls []string
+	if len(certFiles) > 0 {
+		for i, fileHeader := range certFiles {
+			file, err := fileHeader.Open()
+			if err != nil {
+				http.Error(w, `{"error": "Failed to open certificate file"}`, http.StatusInternalServerError)
+				return
+			}
+			defer file.Close()
+
+			publicID := fmt.Sprintf("himatif-registrations/%s_cert_%d_%d", payload.NIM, time.Now().Unix(), i)
+			uploadResult, err := cld.Upload.Upload(ctx, file, uploader.UploadParams{
+				PublicID:     publicID,
+				ResourceType: "image",
+				Overwrite:    api.Bool(true),
+			})
+			if err != nil {
+				log.Printf("Cloudinary certificate upload error: %v", err)
+				http.Error(w, `{"error": "Failed to upload one of the certificates"}`, http.StatusInternalServerError)
+				return
+			}
+			certificateUrls = append(certificateUrls, uploadResult.SecureURL)
 		}
 	}
 
-	// 6. Simpan URL dan data form yang sudah benar ke database
+	// Simpan ke database
 	registration := model.Registration{
-		UserID:         payload.UserID,
-		Division1:      division1,
-		Division2:      division2,
-		Motivation:     r.FormValue("motivation"),
-		VisionMission:  r.FormValue("vision_mission"),
-		CvUrl:          cvUrl,
-		CertificateUrl: certificateUrl,
-		Status:         "pending",
-		Note:           "",
-		UpdatedAt:      primitive.NewDateTimeFromTime(time.Now()),
+		UserID:          payload.UserID,
+		Division1:       division1,
+		Division2:       division2,
+		Motivation:      r.FormValue("motivation"),
+		VisionMission:   r.FormValue("vision_mission"),
+		CvUrls:          cvUrls,
+		CertificateUrls: certificateUrls,
+		Status:          "pending",
+		Note:            "",
+		UpdatedAt:       primitive.NewDateTimeFromTime(time.Now()),
 	}
 
 	collection := repository.MongoClient.Database(cfg.DatabaseName).Collection("registrations")
@@ -226,7 +222,6 @@ func GetUserProfileHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var user model.User
-	// PERBAIKAN: Gunakan nama database dari config, bukan hardcode
 	collection := repository.MongoClient.Database(config.GetConfig().DatabaseName).Collection("users")
 	err := collection.FindOne(context.TODO(), bson.M{"_id": payload.UserID}).Decode(&user)
 	if err != nil {
@@ -240,7 +235,6 @@ func GetUserProfileHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(user)
 }
 
-// GetUserRegistrationHandler mengambil detail pendaftaran milik user yang sedang login
 func GetUserRegistrationHandler(w http.ResponseWriter, r *http.Request) {
 	payload, ok := middleware.GetPayloadFromContext(r.Context())
 	if !ok {
@@ -251,12 +245,10 @@ func GetUserRegistrationHandler(w http.ResponseWriter, r *http.Request) {
 	var registration model.Registration
 	collection := repository.MongoClient.Database(config.GetConfig().DatabaseName).Collection("registrations")
 
-	// Cari pendaftaran berdasarkan user_id dari token
 	err := collection.FindOne(context.TODO(), bson.M{"user_id": payload.UserID}).Decode(&registration)
 	if err != nil {
-		// Jika tidak ditemukan, itu bukan error. Kirim respons kosong.
 		if err == mongo.ErrNoDocuments {
-			w.WriteHeader(http.StatusNoContent) // 204 No Content
+			w.WriteHeader(http.StatusNoContent)
 			return
 		}
 		http.Error(w, `{"error": "Failed to fetch registration data"}`, http.StatusInternalServerError)
