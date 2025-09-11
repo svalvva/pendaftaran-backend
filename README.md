@@ -36,7 +36,7 @@ Selamat datang di layanan backend untuk Aplikasi Pendaftaran Anggota Baru HIMATI
 
 1.  **Clone repository ini:**
     ```bash
-    git clone [https://github.com/syalwa/pendaftaran-backend.git](https://github.com/syalwa/pendaftaran-backend.git)
+    git clone [https://github.com/svalvva/pendaftaran-backend.git](https://github.com/svalvva/pendaftaran-backend.git)
     cd pendaftaran-backend
     ```
 
